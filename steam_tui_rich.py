@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import subprocess
+from datetime import datetime
+from rich.console import Console, Group
+from rich.text import Text
+from rich.padding import Padding
+from rich.panel import Panel
+from rich.layout import Layout
+from rich.align import Align
+from rich.text import Text
+from rich.live import Live
+from rich.table import Table
+from rich import box
+from steam_tui import get_games
+from imag_proc import image_to_ascii_pillow, image_to_ascii_colored
+import os
+import msvcrt
+
+console = Console()
+games = get_games()
+# Filtra giochi in base a search_text
+start_search = False
+filtered_games =  sorted(games, key=lambda game: game['category'].lower())
+search_text = ""
+
+# Stato UI
+selezionato = 0
+console = Console()
+
+def get_key():
+    key = msvcrt.getch()
+    if key == b'\xe0':  # tasto speciale (frecce)
+        key2 = msvcrt.getch()
+        if key2 == b'H': return "w"  # freccia su
+        if key2 == b'P': return "s"  # freccia giù
+    try:
+        return key.decode("utf-8").lower()
+    except:
+        return ""
+    
+def compute_visible_games(games_list, selezionato, max_height):
+    n = len(games_list)
+    # Punto di partenza: cerca di mettere selezionato in cima
+    start_index = selezionato
+    
+    while True:
+        total_height = 0
+        visible = []
+        for i in range(start_index, n):
+            h = estimate_entry_height(games_list[i])
+            if total_height + h > max_height:
+                break
+            visible.append((i, games_list[i]))
+            total_height += h
+        
+        # Se il gioco selezionato è fuori dalla finestra (dopo l'ultima riga)
+        if selezionato < start_index:
+            # scendi in lista spostando start_index giù
+            start_index = selezionato
+            continue
+        
+        if selezionato >= start_index + len(visible):
+            # il selezionato è sotto la finestra, fai scroll down
+            start_index += 1
+            if start_index > selezionato:
+                start_index = selezionato
+            continue
+        
+        break  # selezionato è dentro la finestra
+    
+    return visible
+
+def estimate_entry_height(gioco, width=28):
+    text = Text("➤ " + gioco["name"])
+    lines = text.wrap(console, width, tab_size=4)
+    return len(lines)
+
+def render():
+    layout = Layout()
+    layout.split_column(
+        Layout(name="main", ratio=8),
+        Layout(name="footer", size=3)
+    )
+    layout["main"].split_row(
+        Layout(name="left", ratio=1),
+        Layout(name="right", ratio=3)
+    )
+
+    # Colonna sinistra
+    term_height = os.get_terminal_size().lines
+    max_height = term_height - 6  # spazio per padding, titoli ecc.
+    
+    visible_games = compute_visible_games(filtered_games, selezionato, max_height)
+
+    tabella = Table.grid(padding=1)
+    tabella.box = box.SIMPLE
+
+
+    for i, gioco in visible_games:
+        prefisso = "➤ " if i == selezionato else "  "
+        riga = Text(prefisso + str(gioco["name"]))
+        if i == selezionato:
+            riga.stylize("bold green")
+        tabella.add_row(riga)
+
+
+    search_panel = Panel(Text(f"Search: {search_text}_"), title="Search")
+    lib_panel = Panel(tabella, title="Library", box=box.DOUBLE)
+    layout["main"]["left"].split_column(
+        Layout(name="search",size=3),
+        Layout(name="library")
+    )
+    layout["main"]["left"]["search"].update(search_panel)
+    layout["main"]["left"]["library"].update(lib_panel)
+
+    # Footer con comandi
+    footer_text = Text("[W/S] Muovi | [Enter] Avvia | [Q] Esci")
+    layout["footer"].update(Panel(footer_text))
+
+    # Colonna destra: info gioco selezionato
+    icon_padding = 1
+    icon_width = 60
+    # Crea il layout verticale per info e icona
+    info_icon_layout = Layout()
+    info_icon_layout.split_column(
+        Layout(name="info"),
+        Layout(name="icon", size=int(icon_width/2)+icon_padding)  # spazio fisso per icona ASCII
+    )
+
+    current_game = filtered_games[selezionato]
+    if(current_game['category'] == "Steam"):
+        last_played = datetime.fromtimestamp(int(current_game['last_played']))
+        last_played = last_played.strftime("%b %d %Y %H:%M")
+        info = f"[bold]{current_game['name']}[/bold]\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}\n\n[dim]Last Played:[/] {last_played}"
+    else:
+        info = f"[bold]{current_game['name']}[/bold]\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}"
+    try:
+        ascii_icon = image_to_ascii_colored(current_game["icon"], icon_width)
+    except Exception:
+        ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
+    ascii_icon = Padding(ascii_icon, (0,icon_padding+1,0,0))
+
+    info_icon_layout["info"].update(Align.left(info))
+    info_icon_layout["icon"].update(Align.right(ascii_icon))
+
+    # Inserisci tutto nel pannello destro
+    layout["right"].update(Panel(info_icon_layout, title="Details", box=box.DOUBLE))
+    
+    return layout
+
+# Live rendering e input
+with Live(render(), screen=True) as live:
+    while True:
+        key = get_key()
+
+        if key == "q":
+            break
+        elif key == "w":
+            selezionato = (selezionato - 1) % len(filtered_games)
+            live.update(render())
+        elif key == "s":
+            selezionato = (selezionato + 1) % len(filtered_games)
+            live.update(render())
+        # INVIO
+        elif key == "\r":
+            try:
+                command = filtered_games[selezionato]["exe"]
+                subprocess.Popen(command, shell=True)
+            except Exception as e:
+                console.print(f"[bold red]Errore:[/] {e}")
