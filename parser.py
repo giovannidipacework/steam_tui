@@ -1,3 +1,5 @@
+from datetime import datetime
+import re
 import struct
 import os
 import vdf
@@ -93,6 +95,18 @@ def get_shortcuts(path: str) -> List[Dict[str, Any]]:
             current[key] = val
 
     return shortcuts
+
+def get_shortcut_last_playtime(games, gameprocess_log_path):
+    pattern_add = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] AppID (\d+) adding PID (\d+) as a tracked process ""(.+?)""'
+
+    for line in open(gameprocess_log_path, 'r', encoding='utf-8'):
+        m = re.match(pattern_add, line)
+        if m:
+            timestamp, appid, pid, exe_path = m.groups()
+            for game in games:
+                if(game['exe'] == exe_path):
+                    dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+                    game["last_played"] = int(dt.timestamp())
 
 def get_steam_libraries(steam_path):
     lib_path = os.path.join(steam_path, "steamapps", "libraryfolders.vdf")

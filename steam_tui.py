@@ -1,5 +1,6 @@
+from datetime import datetime
 import json
-from parser import get_shortcuts, get_steam_libraries, get_installed_games
+from parser import get_shortcuts, get_steam_libraries, get_installed_games, get_shortcut_last_playtime
 from icon_search import find_and_classify_steam_images
 import os
 
@@ -18,9 +19,12 @@ def get_games():
             "name": shortcut["appname"],
             "exe": str(shortcut["exe"]).strip('"'),
             "icon": shortcut["icon"],
-            "category": shortcut["0"]
+            "category": shortcut["0"],
+            "last_played": 0
         }
         games.append(game)
+    gameprocess_log_path = os.path.join(steam_path, "logs", "gameprocess_log.txt")
+    get_shortcut_last_playtime(games, gameprocess_log_path)
 
     libraries = get_steam_libraries(steam_path)
     for lib in libraries:
@@ -40,7 +44,7 @@ def get_games():
             "exe": f"start steam://run/{steam_game['appid']}",
             "icon": imgs['icon'],
             "category": "Steam",
-            "last_played": steam_game["LastPlayed"],
+            "last_played": int((steam_game["LastPlayed"])),
             "size_on_disk": steam_game["SizeOnDisk"]
         }
         games.append(game)

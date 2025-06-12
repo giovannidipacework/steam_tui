@@ -21,12 +21,13 @@ console = Console()
 games = get_games()
 # Filtra giochi in base a search_text
 start_search = False
-filtered_games =  sorted(games, key=lambda game: game['category'].lower())
+# filtered_games =  sorted(games, key=lambda game: game['name'].lower())
+filtered_games =  sorted(games, key=lambda game: game['last_played'], reverse=True)
 search_text = ""
 
 # Stato UI
 selezionato = 0
-console = Console()
+term_height = os.get_terminal_size().lines
 
 def get_key():
     key = msvcrt.getch()
@@ -98,7 +99,7 @@ def render():
 
 
     for i, gioco in visible_games:
-        prefisso = "➤ " if i == selezionato else "  "
+        prefisso = "➤ " if i == selezionato else ""
         riga = Text(prefisso + str(gioco["name"]))
         if i == selezionato:
             riga.stylize("bold green")
@@ -120,7 +121,7 @@ def render():
 
     # Colonna destra: info gioco selezionato
     icon_padding = 1
-    icon_width = 60
+    icon_width = max(60, max_height)
     # Crea il layout verticale per info e icona
     info_icon_layout = Layout()
     info_icon_layout.split_column(
@@ -129,12 +130,12 @@ def render():
     )
 
     current_game = filtered_games[selezionato]
-    if(current_game['category'] == "Steam"):
-        last_played = datetime.fromtimestamp(int(current_game['last_played']))
+    info = f"[bold]{current_game['name']}[/bold]\n\n[dim]AppId:[/] {current_game['appid']}\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}"
+    if(current_game['last_played'] != 0):
+        last_played = datetime.fromtimestamp(current_game['last_played'])
         last_played = last_played.strftime("%b %d %Y %H:%M")
-        info = f"[bold]{current_game['name']}[/bold]\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}\n\n[dim]Last Played:[/] {last_played}"
-    else:
-        info = f"[bold]{current_game['name']}[/bold]\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}"
+        info += f"\n\n[dim]Last Played:[/] {last_played}"
+    
     try:
         ascii_icon = image_to_ascii_colored(current_game["icon"], icon_width)
     except Exception:
@@ -153,6 +154,7 @@ def render():
 with Live(render(), screen=True) as live:
     while True:
         key = get_key()
+        term_height = os.get_terminal_size().lines
 
         if key == "q":
             break
