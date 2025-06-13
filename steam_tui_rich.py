@@ -19,15 +19,18 @@ import msvcrt
 
 console = Console()
 games = get_games()
-# Filtra giochi in base a search_text
-start_search = False
-# filtered_games =  sorted(games, key=lambda game: game['name'].lower())
+
+# Search
 filtered_games =  sorted(games, key=lambda game: game['last_played'], reverse=True)
-search_text = ""
+search_query = ""
+search_mode = False
 
 # Stato UI
 selezionato = 0
 term_height = os.get_terminal_size().lines
+
+def filter_games(games, query):
+    return [g for g in games if query.lower() in g["name"].lower()]
 
 def get_key():
     key = msvcrt.getch()
@@ -106,7 +109,7 @@ def render():
         tabella.add_row(riga)
 
 
-    search_panel = Panel(Text(f"Search: {search_text}_"), title="Search")
+    search_panel = Panel(Text(f"Search: {search_query}_"), title="Search")
     lib_panel = Panel(tabella, title="Library", box=box.DOUBLE)
     layout["main"]["left"].split_column(
         Layout(name="search",size=3),
@@ -156,16 +159,35 @@ with Live(render(), screen=True) as live:
 
         if key == "q":
             break
-        elif key == "w":
-            selezionato = (selezionato - 1) % len(filtered_games)
-            live.update(render())
-        elif key == "s":
-            selezionato = (selezionato + 1) % len(filtered_games)
-            live.update(render())
-        # INVIO
-        elif key == "\r":
-            try:
-                command = filtered_games[selezionato]["exe"]
-                subprocess.Popen(command, shell=True)
-            except Exception as e:
-                console.print(f"[bold red]Errore:[/] {e}")
+
+        if search_mode:
+            if key == "\r":  # Enter: esce dalla ricerca
+                search_mode = False
+                live.update(render())
+            elif key == "\x08":  # Backspace
+                search_query = search_query[:-1]
+                filtered_games = filter_games(games, search_query)
+                selezionato = 0
+                live.update(render())
+            elif key.isprintable():
+                search_query += key
+                filtered_games = filter_games(games, search_query)
+                selezionato = 0
+                live.update(render())
+        else:
+            if key == "/":
+                search_mode = True
+                filtered_games = filter_games(games, search_query)
+                live.update(render())
+            elif key == "w":
+                selezionato = (selezionato - 1) % len(filtered_games)
+                live.update(render())
+            elif key == "s":
+                selezionato = (selezionato + 1) % len(filtered_games)
+                live.update(render())
+            elif key == "\r":
+                try:
+                    command = filtered_games[selezionato]["exe"]
+                    subprocess.Popen(command, shell=True)
+                except Exception as e:
+                    console.print(f"[bold red]Errore:[/] {e}")
