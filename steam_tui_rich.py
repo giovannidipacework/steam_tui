@@ -13,7 +13,7 @@ from rich.live import Live
 from rich.table import Table
 from rich import box
 from steam_tui import get_games
-from imag_proc import image_to_ascii_pillow, image_to_ascii_colored
+from imag_proc import image_to_ascii
 import os
 import msvcrt
 
@@ -136,10 +136,8 @@ def render():
         last_played = last_played.strftime("%b %d %Y %H:%M")
         info += f"\n\n[dim]Last Played:[/] {last_played}"
     
-    try:
-        ascii_icon = image_to_ascii_colored(current_game["icon"], icon_width)
-    except Exception:
-        ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
+    ascii_icon = image_to_ascii(current_game["icon"], icon_width)
+        # ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
     ascii_icon = Padding(ascii_icon, (0,icon_padding+1,0,0))
 
     info_icon_layout["info"].update(Align.left(info))
