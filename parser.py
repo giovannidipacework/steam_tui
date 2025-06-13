@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 import re
 import struct
 import os
@@ -104,7 +105,7 @@ def get_shortcut_last_playtime(games, gameprocess_log_path):
         if m:
             timestamp, appid, pid, exe_path = m.groups()
             for game in games:
-                if(game['exe'] == exe_path):
+                if(exe_path in game['path']):
                     dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
                     game["last_played"] = int(dt.timestamp())
 

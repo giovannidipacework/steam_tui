@@ -14,13 +14,15 @@ def get_games():
     shortcut_path = os.path.join(steam_path, "userdata", steam_id, "config", "shortcuts.vdf")
     shortcuts = get_shortcuts(shortcut_path)
     for shortcut in shortcuts:
+        id = (shortcut["appid"] << 32) | 0x02000000
         game = {
-            "appid": shortcut["appid"],
+            "appid":shortcut["appid"],
             "name": shortcut["appname"],
-            "exe": str(shortcut["exe"]).strip('"'),
+            "exe": f"start steam://rungameid/{id}",
             "icon": shortcut["icon"],
             "category": shortcut["0"],
-            "last_played": 0
+            "last_played": 0,
+            "path": shortcut['exe']
         }
         games.append(game)
     gameprocess_log_path = os.path.join(steam_path, "logs", "gameprocess_log.txt")

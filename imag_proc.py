@@ -97,7 +97,7 @@ def image_to_ascii(image_path, in_width=40):
     try:
         term_size = os.get_terminal_size()
         max_width = term_size.columns - 4 if term_size.columns > 10 else 30
-        max_width = max(max_width, in_width)
+        max_width = min(max_width, in_width)
         max_height = term_size.lines - 18 if term_size.lines > 20 else 10
     except Exception:
         max_width = 30
