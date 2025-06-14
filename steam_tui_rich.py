@@ -20,17 +20,39 @@ import msvcrt
 console = Console()
 games = get_games()
 
-# Search
-filtered_games =  sorted(games, key=lambda game: game['last_played'], reverse=True)
-search_query = ""
-search_mode = False
-
 # Stato UI
 selezionato = 0
 term_height = os.get_terminal_size().lines
 
+# Sort
+sort_ascending = True
+sort_modes = ["name", "category", "last_played"]
+sort_index = 0
+
+def sort_games(games, sort_mode, sort_ascending):
+    sorted_list = sorted(games, key=lambda g: g[sort_mode], reverse=sort_ascending)
+    return sorted_list
+
+# Search
+filtered_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+search_query = ""
+search_mode = False
+# Fallback for no result in search
+no_result = [
+    {
+        "appid": "No Result",
+        "name": "No Result",
+        "exe": "No Result",
+        "icon": "",
+        "category": "No Result",
+        "last_played": 0,
+        "path": "No Result"
+    }
+]
+
 def filter_games(games, query):
-    return [g for g in games if query.lower() in g["name"].lower()]
+    filter =  [g for g in games if query.lower() in g["name"].lower()]
+    return filter
 
 def get_key():
     key = msvcrt.getch()
@@ -109,7 +131,7 @@ def render():
         tabella.add_row(riga)
 
 
-    search_panel = Panel(Text(f"Search: {search_query}_"), title="Search")
+    search_panel = Panel(Text(f"Search: {search_query}_"), title="Search", subtitle=f"[dim]Sort by: {sort_modes[sort_index]} {"↑" if sort_ascending else "↓"}[/]")
     lib_panel = Panel(tabella, title="Library", box=box.DOUBLE)
     layout["main"]["left"].split_column(
         Layout(name="search",size=3),
@@ -119,7 +141,7 @@ def render():
     layout["main"]["left"]["library"].update(lib_panel)
 
     # Footer con comandi
-    footer_text = Text("[W/S] Muovi | [Enter] Avvia | [Q] Esci")
+    footer_text = Text("[W/S] Move | [Enter] Start | [/] Search | [TAB] Sort | [R] Reverse | [Q] Exit")
     layout["footer"].update(Panel(footer_text))
 
     # Colonna destra: info gioco selezionato
@@ -139,8 +161,10 @@ def render():
         last_played = last_played.strftime("%b %d %Y %H:%M")
         info += f"\n\n[dim]Last Played:[/] {last_played}"
     
-    ascii_icon = image_to_ascii(current_game["icon"], icon_width)
-        # ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
+    try:
+        ascii_icon = image_to_ascii(current_game["icon"], icon_width)
+    except:
+        ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
     ascii_icon = Padding(ascii_icon, (0,icon_padding+1,0,0))
 
     info_icon_layout["info"].update(Align.left(info))
@@ -157,27 +181,44 @@ with Live(render(), screen=True) as live:
         key = get_key()
         term_height = os.get_terminal_size().lines
 
-        if key == "q":
-            break
-
         if search_mode:
-            if key == "\r":  # Enter: esce dalla ricerca
+            if key == "\r":  # Enter: return to normal mode
                 search_mode = False
                 live.update(render())
-            elif key == "\x08":  # Backspace
+            elif key == "\x08":  # Backspace: delete char
                 search_query = search_query[:-1]
-                filtered_games = filter_games(games, search_query)
+                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                filtered_games = filter_games(sorted_games, search_query)
+                if filtered_games.__len__() <= 0:
+                    filtered_games = no_result
                 selezionato = 0
                 live.update(render())
             elif key.isprintable():
                 search_query += key
-                filtered_games = filter_games(games, search_query)
+                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                filtered_games = filter_games(sorted_games, search_query)
+                if filtered_games.__len__() <= 0:
+                    filtered_games = no_result
                 selezionato = 0
                 live.update(render())
         else:
-            if key == "/":
+            if key == "q":
+                quit()
+            elif key == "/":  # /: search moed
                 search_mode = True
-                filtered_games = filter_games(games, search_query)
+                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                filtered_games = filter_games(sorted_games, search_query)
+                live.update(render())
+            elif key == "\t":  # TAB: sort mode
+                sort_index = (sort_index + 1) % len(sort_modes)
+                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                filtered_games = filter_games(sorted_games, search_query)
+                selezionato = 0
+                live.update(render())
+            elif key == "r":   # R: reverse order
+                sort_ascending = not sort_ascending
+                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                filtered_games = filter_games(sorted_games, search_query)
                 live.update(render())
             elif key == "w":
                 selezionato = (selezionato - 1) % len(filtered_games)
@@ -185,7 +226,7 @@ with Live(render(), screen=True) as live:
             elif key == "s":
                 selezionato = (selezionato + 1) % len(filtered_games)
                 live.update(render())
-            elif key == "\r":
+            elif key == "\r": # Enter: start game
                 try:
                     command = filtered_games[selezionato]["exe"]
                     subprocess.Popen(command, shell=True)
