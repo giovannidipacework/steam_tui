@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 import subprocess
 from datetime import datetime
 from rich.console import Console, Group
@@ -49,6 +50,14 @@ no_result = [
         "path": "No Result"
     }
 ]
+
+# Load config from JSON
+with open("config.json", "r") as f:
+    config = json.load(f)
+sort_index = config['sort_index']
+sort_ascending = config['ascending']
+filtered_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+
 
 def filter_games(games, query):
     filter =  [g for g in games if query.lower() in g["name"].lower()]
@@ -203,6 +212,10 @@ with Live(render(), screen=True) as live:
                 live.update(render())
         else:
             if key == "q":
+                with open("config.json", "w") as f:
+                    config["sort_index"] = sort_index
+                    config["ascending"] = sort_ascending
+                    json.dump(config, f, indent=4)
                 quit()
             elif key == "/":  # /: search moed
                 search_mode = True
