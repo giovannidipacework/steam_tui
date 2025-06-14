@@ -1,5 +1,3 @@
-from datetime import datetime
-import json
 from parser import get_shortcuts, get_steam_libraries, get_installed_games, get_shortcut_last_playtime
 from icon_search import find_and_classify_steam_images
 import os

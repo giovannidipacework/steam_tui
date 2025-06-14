@@ -1,9 +1,8 @@
-from datetime import datetime
-import hashlib
 import re
 import struct
 import os
 import vdf
+from datetime import datetime
 from typing import List, Dict, Any
 
 TYPE_END = 0x08

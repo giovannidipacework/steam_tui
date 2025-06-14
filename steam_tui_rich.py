@@ -1,10 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+import os
+import msvcrt
 import json
 import subprocess
+import threading
 import time
 from datetime import datetime
-from rich.console import Console, Group
+from rich.console import Console
 from rich.text import Text
 from rich.padding import Padding
 from rich.panel import Panel
@@ -16,10 +17,50 @@ from rich.table import Table
 from rich import box
 from steam_tui import get_games
 from imag_proc import image_to_ascii
-import os
-import msvcrt
+
+# Sort games based on sort mode and sord_ascending order
+def sort_games(games, sort_mode, sort_ascending):
+    sorted_list = sorted(games, key=lambda g: g[sort_mode], reverse=sort_ascending)
+    return sorted_list
+
+# Filter games based on query
+def filter_games(games, query):
+    if query != "":
+        filter =  [g for g in games if query.lower() in g["name"].lower()]
+    else:
+        filter = games
+    return filter
+
+# Update the games based on query and sort mode
+def update_games(games, search_query, sort_mode, sort_ascending):
+    sorted_games = sort_games(games, sort_mode, sort_ascending)
+    filtered_games = filter_games(sorted_games, search_query)
+    return filtered_games
+
+# Save last sort order and quit
+def quit_steam():
+    with open("config.json", "w") as f:
+        config["sort_index"] = sort_index
+        config["ascending"] = sort_ascending
+        json.dump(config, f, indent=4)
+    quit()
+
+def get_key():
+    if not msvcrt.kbhit():
+        return ""  # Nessun tasto premuto, ritorna stringa vuota subito
+    key = msvcrt.getch()
+    if key == b'\xe0':  # tasto speciale (frecce)
+        key2 = msvcrt.getch()
+        if key2 == b'H': return "w"  # freccia su
+        if key2 == b'P': return "s"  # freccia giù
+    try:
+        return key.decode("utf-8").lower()
+    except:
+        return ""
 
 console = Console(record=True)
+
+# Read config from config.json
 with open("config.json", "r") as f:
     config = json.load(f)
 steam_id = config["steam_id"]
@@ -27,21 +68,15 @@ steam_path = config["steam_path"]
 
 games = get_games(steam_id, steam_path)
 
-# Stato UI
+# UI state
 selezionato = 0
-# Colonna sinistra
-max_height = os.get_terminal_size().lines - 6 # spazio per padding, titoli ecc.
+max_height = os.get_terminal_size().lines - 6
+max_width = os.get_terminal_size().columns - 6
 
-# Sort
+# Sort options
 sort_index = config['sort_index']
 sort_ascending = config['ascending']
 sort_modes = ["name", "category", "last_played"]
-
-def sort_games(games, sort_mode, sort_ascending):
-    sorted_list = sorted(games, key=lambda g: g[sort_mode], reverse=sort_ascending)
-    return sorted_list
-
-filtered_games = sort_games(games, sort_modes[sort_index], sort_ascending)
 
 # Search
 search_query = ""
@@ -59,26 +94,9 @@ no_result = [
     }
 ]
 
+filtered_games = update_games(games, search_query, sort_modes[sort_index], sort_ascending)
 
-def filter_games(games, query):
-    if query != "":
-        filter =  [g for g in games if query.lower() in g["name"].lower()]
-    else:
-        filter = games
-    return filter
-
-def get_key():
-    key = msvcrt.getch()
-    if key == b'\xe0':  # tasto speciale (frecce)
-        key2 = msvcrt.getch()
-        if key2 == b'H': return "w"  # freccia su
-        if key2 == b'P': return "s"  # freccia giù
-    try:
-        return key.decode("utf-8").lower()
-    except:
-        return ""
-    
-def compute_visible_games(games_list, selezionato, max_height):
+def compute_visible_games(games_list, selezionato, max_height, width):
     n = len(games_list)
     # Punto di partenza: cerca di mettere selezionato in cima
     start_index = selezionato
@@ -87,7 +105,7 @@ def compute_visible_games(games_list, selezionato, max_height):
         total_height = 0
         visible = []
         for i in range(start_index, n):
-            h = estimate_entry_height(games_list[i])
+            h = estimate_entry_height(games_list[i]['name'], width)
             if total_height + h > max_height:
                 break
             visible.append((i, games_list[i]))
@@ -110,8 +128,8 @@ def compute_visible_games(games_list, selezionato, max_height):
     
     return visible
 
-def estimate_entry_height(gioco, width=28):
-    text = Text("➤ " + gioco["name"])
+def estimate_entry_height(entry, width=28):
+    text = Text("➤ " + entry)
     lines = text.wrap(console, width, tab_size=4)
     return len(lines)
 
@@ -125,16 +143,19 @@ def render():
         Layout(name="left", ratio=1),
         Layout(name="right", ratio=3)
     )
-
-    # Colonna sinistra
-    term_height = os.get_terminal_size().lines
-    max_height = term_height - 6  # spazio per padding, titoli ecc.
+    layout["main"]["left"].split_column(
+        Layout(name="search",size=3),
+        Layout(name="library")
+    )
     
-    visible_games = compute_visible_games(filtered_games, selezionato, max_height)
+    max_height = os.get_terminal_size().lines - 6
+    max_width = os.get_terminal_size().columns - 6
+    
+    left_width =  max_width*((layout["main"]["left"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
+    visible_games = compute_visible_games(filtered_games, selezionato, max_height, int(left_width))
 
     tabella = Table.grid(padding=1)
     tabella.box = box.SIMPLE
-
 
     for i, gioco in visible_games:
         prefisso = "➤ " if i == selezionato else ""
@@ -146,10 +167,7 @@ def render():
 
     search_panel = Panel(Text(f"Search: {search_query}_"), title="Search", subtitle=f"[dim]Sort by: {sort_modes[sort_index]} {"↑" if sort_ascending else "↓"}[/]")
     lib_panel = Panel(tabella, title="Library", box=box.DOUBLE)
-    layout["main"]["left"].split_column(
-        Layout(name="search",size=3),
-        Layout(name="library")
-    )
+
     layout["main"]["left"]["search"].update(search_panel)
     layout["main"]["left"]["library"].update(lib_panel)
 
@@ -157,28 +175,28 @@ def render():
     footer_text = Text("[W/S] Move | [Enter] Start | [/] Search | [TAB] Sort | [R] Reverse | [Q] Exit")
     layout["footer"].update(Panel(footer_text))
 
-    # Colonna destra: info gioco selezionato
-    icon_padding = 1
-    icon_width = max(60, max_height)
-    # Crea il layout verticale per info e icona
-    info_icon_layout = Layout()
-    info_icon_layout.split_column(
-        Layout(name="info"),
-        Layout(name="icon", size=int(icon_width/2)+icon_padding)  # spazio fisso per icona ASCII
-    )
-
     current_game = filtered_games[selezionato]
     info = f"[bold]{current_game['name']}[/bold]\n\n[dim]AppId:[/] {current_game['appid']}\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}"
     if(current_game['last_played'] != 0):
         last_played = datetime.fromtimestamp(current_game['last_played'])
         last_played = last_played.strftime("%b %d %Y %H:%M")
         info += f"\n\n[dim]Last Played:[/] {last_played}"
+
+    icon_padding = 2
+    right_width =  max_width*((layout["main"]["right"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
+    right_width -= estimate_entry_height(info, int(right_width))
+    icon_width = right_width + icon_padding
     
     try:
-        ascii_icon = image_to_ascii(current_game["icon"], icon_width)
+        ascii_icon = image_to_ascii(current_game["icon"], int(icon_width))
     except:
-        ascii_icon = f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯"
-    ascii_icon = Padding(ascii_icon, (0,icon_padding+1,0,0))
+        ascii_icon = Text(f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯")
+
+    info_icon_layout = Layout()
+    info_icon_layout.split_column(
+        Layout(name="info"),
+        Layout(name="icon")  # spazio fisso per icona ASCII
+    )
 
     info_icon_layout["info"].update(Align.left(info))
     info_icon_layout["icon"].update(Align.right(ascii_icon))
@@ -194,62 +212,38 @@ with Live(render(), screen=True) as live:
         key = get_key()
 
         if search_mode:
-            if key == "\r":  # Enter: return to normal mode
+            if key == "\r": # Enter: return to normal mode
                 search_mode = False
-                live.update(render())
-            elif key == "\x08":  # Backspace: delete char
+            elif key == "\x08": # Backspace: delete char
                 search_query = search_query[:-1]
-                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                filtered_games = filter_games(sorted_games, search_query)
-                if filtered_games.__len__() <= 0:
-                    filtered_games = no_result
                 selezionato = 0
-                live.update(render())
-            elif key.isprintable():
+            elif key.isprintable(): # OTHER: add to search_query
                 search_query += key
-                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                filtered_games = filter_games(sorted_games, search_query)
-                if filtered_games.__len__() <= 0:
-                    filtered_games = no_result
                 selezionato = 0
-                live.update(render())
         else:
-            if key == "q":
-                with open("config.json", "w") as f:
-                    config["sort_index"] = sort_index
-                    config["ascending"] = sort_ascending
-                    json.dump(config, f, indent=4)
-                quit()
-            elif key == "/":  # /: search moed
+            if key == "q":  # Q: save confing and quit
+                quit_steam()
+            elif key == "/":    # /: search moed
                 search_mode = True
-                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                filtered_games = filter_games(sorted_games, search_query)
-                live.update(render())
-            elif key == "\t":  # TAB: sort mode
+            elif key == "\t":   # TAB: sort mode
                 sort_index = (sort_index + 1) % len(sort_modes)
-                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                filtered_games = filter_games(sorted_games, search_query)
                 selezionato = 0
-                live.update(render())
-            elif key == "r":   # R: reverse order
+            elif key == "r":    # R: reverse order
                 sort_ascending = not sort_ascending
-                sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                filtered_games = filter_games(sorted_games, search_query)
-                live.update(render())
-            elif key == "w":
+            elif key == "w":    # W: move down
                 selezionato = (selezionato - 1) % len(filtered_games)
-                live.update(render())
-            elif key == "s":
+            elif key == "s":    # S: move up
                 selezionato = (selezionato + 1) % len(filtered_games)
-                live.update(render())
-            elif key == "\r": # Enter: start game
+            elif key == "\r":   # Enter: start game
                 try:
                     command = filtered_games[selezionato]["exe"]
                     subprocess.Popen(command, shell=True)
                     time.sleep(5)
                     games = get_games(steam_id, steam_path)
-                    sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
-                    filtered_games = filter_games(sorted_games, search_query)
-                    live.update(render())
                 except Exception as e:
                     console.print(f"[bold red]Errore:[/] {e}")
+
+        filtered_games = update_games(games, search_query, sort_modes[sort_index], sort_ascending)
+        if filtered_games.__len__() <= 0:
+            filtered_games = no_result
+        live.update(render())

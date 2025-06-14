@@ -1,4 +1,4 @@
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageFilter
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -96,11 +96,10 @@ def image_to_ascii(image_path, in_width=40):
     # Get terminal size and set max width/height
     try:
         term_size = os.get_terminal_size()
-        max_width = term_size.columns - 4 if term_size.columns > 10 else 30
-        max_width = min(max_width, in_width)
-        max_height = term_size.lines - 18 if term_size.lines > 20 else 10
+        max_width = min(term_size.lines, in_width)
+        max_height = max_width
     except Exception:
-        max_width = 30
+        max_width = 10
         max_height = 10
 
     # Check for transparent background
