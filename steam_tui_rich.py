@@ -19,7 +19,7 @@ from imag_proc import image_to_ascii
 import os
 import msvcrt
 
-console = Console()
+console = Console(record=True)
 with open("config.json", "r") as f:
     config = json.load(f)
 steam_id = config["steam_id"]
@@ -29,7 +29,8 @@ games = get_games(steam_id, steam_path)
 
 # Stato UI
 selezionato = 0
-term_height = os.get_terminal_size().lines
+# Colonna sinistra
+max_height = os.get_terminal_size().lines - 6 # spazio per padding, titoli ecc.
 
 # Sort
 sort_index = config['sort_index']
@@ -60,7 +61,10 @@ no_result = [
 
 
 def filter_games(games, query):
-    filter =  [g for g in games if query.lower() in g["name"].lower()]
+    if query != "":
+        filter =  [g for g in games if query.lower() in g["name"].lower()]
+    else:
+        filter = games
     return filter
 
 def get_key():
@@ -188,7 +192,6 @@ def render():
 with Live(render(), screen=True) as live:
     while True:
         key = get_key()
-        term_height = os.get_terminal_size().lines
 
         if search_mode:
             if key == "\r":  # Enter: return to normal mode
