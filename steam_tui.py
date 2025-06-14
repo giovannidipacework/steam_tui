@@ -4,11 +4,7 @@ from parser import get_shortcuts, get_steam_libraries, get_installed_games, get_
 from icon_search import find_and_classify_steam_images
 import os
 
-def get_games():
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    steam_id = config["steam_id"]
-    steam_path = config["steam_path"]
+def get_games(steam_id, steam_path):
     games = []
 
     shortcut_path = os.path.join(steam_path, "userdata", steam_id, "config", "shortcuts.vdf")

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import json
 import subprocess
+import time
 from datetime import datetime
 from rich.console import Console, Group
 from rich.text import Text
@@ -19,23 +20,29 @@ import os
 import msvcrt
 
 console = Console()
-games = get_games()
+with open("config.json", "r") as f:
+    config = json.load(f)
+steam_id = config["steam_id"]
+steam_path = config["steam_path"]
+
+games = get_games(steam_id, steam_path)
 
 # Stato UI
 selezionato = 0
 term_height = os.get_terminal_size().lines
 
 # Sort
-sort_ascending = True
+sort_index = config['sort_index']
+sort_ascending = config['ascending']
 sort_modes = ["name", "category", "last_played"]
-sort_index = 0
 
 def sort_games(games, sort_mode, sort_ascending):
     sorted_list = sorted(games, key=lambda g: g[sort_mode], reverse=sort_ascending)
     return sorted_list
 
-# Search
 filtered_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+
+# Search
 search_query = ""
 search_mode = False
 # Fallback for no result in search
@@ -50,13 +57,6 @@ no_result = [
         "path": "No Result"
     }
 ]
-
-# Load config from JSON
-with open("config.json", "r") as f:
-    config = json.load(f)
-sort_index = config['sort_index']
-sort_ascending = config['ascending']
-filtered_games = sort_games(games, sort_modes[sort_index], sort_ascending)
 
 
 def filter_games(games, query):
@@ -243,5 +243,10 @@ with Live(render(), screen=True) as live:
                 try:
                     command = filtered_games[selezionato]["exe"]
                     subprocess.Popen(command, shell=True)
+                    time.sleep(5)
+                    games = get_games(steam_id, steam_path)
+                    sorted_games = sort_games(games, sort_modes[sort_index], sort_ascending)
+                    filtered_games = filter_games(sorted_games, search_query)
+                    live.update(render())
                 except Exception as e:
                     console.print(f"[bold red]Errore:[/] {e}")
