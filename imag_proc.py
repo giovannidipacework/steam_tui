@@ -87,20 +87,11 @@ def sobel_edge(image, edge_threshold=0.3):
 
     return angles_masked
 
-def image_to_ascii(image_path, in_width=40):
+def image_to_ascii(image_path, in_width = 40, in_height = 40):
     # ... codice simile a image_to_ascii_pillow ...
 
     ASCII_CHARS = " .:-=+*#%@░▒▓█"
     EDGE_THRESHOLD = 0.5
-
-    # Get terminal size and set max width/height
-    try:
-        term_size = os.get_terminal_size()
-        max_width = min(term_size.lines, in_width)
-        max_height = max_width
-    except Exception:
-        max_width = 10
-        max_height = 10
 
     # Check for transparent background
     img = Image.open(image_path)
@@ -118,14 +109,21 @@ def image_to_ascii(image_path, in_width=40):
     # ASCII characters are taller than wide, so adjust aspect ratio
     aspect_ratio = img.height / img.width
     char_aspect = 0.5  # typical ASCII char height/width ratio
-    # First, try to fit width
-    fit_height = int(max_width * aspect_ratio * char_aspect)
-    if fit_height <= max_height:
-        width = max_width
-        height = fit_height
-    else:
+
+    term_size = os.get_terminal_size()
+    max_width = min(in_width, term_size.columns)
+    max_height = min(in_height, term_size.lines)
+
+    fit_height = int(max_width * (aspect_ratio * char_aspect))
+    fit_width = int(max_height / (aspect_ratio * char_aspect))
+
+    if max_height < fit_height:
         height = max_height
-        width = int(max_height / (aspect_ratio * char_aspect))
+        width = fit_width
+    else:
+        height = fit_height
+        width = max_width
+
     width = max(1, width)
     height = max(1, height)
 
@@ -168,7 +166,6 @@ def image_to_ascii(image_path, in_width=40):
                 idx = int(arr_gray[y, x] / 255 * (len(ASCII_CHARS) - 1))
                 idx = max(0, min(idx, len(ASCII_CHARS) - 1))
                 char = ASCII_CHARS[idx]
-                # char = " "
                 ascii_text.append(char, style=f"rgb({arr_colors[y, x][0]},{arr_colors[y, x][1]},{arr_colors[y, x][2]})")
         if y < height-1:
             ascii_text.append("\n")

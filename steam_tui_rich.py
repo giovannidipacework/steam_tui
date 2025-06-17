@@ -96,6 +96,7 @@ no_result = [
 
 filtered_games = update_games(games, search_query, sort_modes[sort_index], sort_ascending)
 
+# FIXME move selection
 def compute_visible_games(games_list, selezionato, max_height, width):
     n = len(games_list)
     # Punto di partenza: cerca di mettere selezionato in cima
@@ -157,9 +158,9 @@ def render():
     tabella = Table.grid(padding=1)
     tabella.box = box.SIMPLE
 
-    for i, gioco in visible_games:
+    for i, game in visible_games:
         prefisso = "➤ " if i == selezionato else ""
-        riga = Text(prefisso + str(gioco["name"]))
+        riga = Text(prefisso + str(game["name"]))
         if i == selezionato:
             riga.stylize("bold green")
         tabella.add_row(riga)
@@ -185,10 +186,11 @@ def render():
     icon_padding = 2
     right_width =  max_width*((layout["main"]["right"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
     right_width -= estimate_entry_height(info, int(right_width))
-    icon_width = right_width + icon_padding
+    icon_width = int(right_width + icon_padding)
+    icon_height = int(max_height/2)
     
     try:
-        ascii_icon = image_to_ascii(current_game["icon"], int(icon_width))
+        ascii_icon = image_to_ascii(current_game["icon"], icon_width, icon_height)
     except:
         ascii_icon = Text(f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯")
 
@@ -210,7 +212,7 @@ def render():
 with Live(render(), screen=True) as live:
     while True:
         key = get_key()
-
+        
         if search_mode:
             if key == "\r": # Enter: return to normal mode
                 search_mode = False
