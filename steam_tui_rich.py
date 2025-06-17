@@ -65,11 +65,14 @@ with open("config.json", "r") as f:
     config = json.load(f)
 steam_id = config["steam_id"]
 steam_path = config["steam_path"]
+palettes = config["palettes"]
 
 games = get_games(steam_id, steam_path)
 
 # UI state
 selezionato = 0
+current_palette_index = 0
+palette_selected = palettes[current_palette_index]
 max_height = os.get_terminal_size().lines - 6
 max_width = os.get_terminal_size().columns - 6
 
@@ -149,6 +152,12 @@ def render():
         Layout(name="library")
     )
     
+    info_icon_layout = Layout()
+    info_icon_layout.split_column(
+        Layout(name="info"),
+        Layout(name="icon")  # spazio fisso per icona ASCII
+    )
+
     max_height = os.get_terminal_size().lines - 6
     max_width = os.get_terminal_size().columns - 6
     
@@ -162,30 +171,39 @@ def render():
         prefisso = "➤ " if i == selezionato else ""
         riga = Text(prefisso + str(game["name"]))
         if i == selezionato:
-            riga.stylize("bold green")
+            riga.stylize(f"bold {palette_selected['selected']}")
         tabella.add_row(riga)
 
 
-    search_panel = Panel(Text(f"Search: {search_query}_"), title="Search", subtitle=f"[dim]Sort by: {sort_modes[sort_index]} {"↑" if sort_ascending else "↓"}[/]")
-    lib_panel = Panel(tabella, title="Library", box=box.DOUBLE)
+    search_panel = Panel(Text(f"Search: {search_query}_"), title="Search", subtitle=f"[dim]Sort by: {sort_modes[sort_index]} {"↑" if sort_ascending else "↓"}[/]", style=f"{palette_selected['search']}")
+    lib_panel = Panel(tabella, title="Library", box=box.DOUBLE, style=palette_selected['time'])
 
     layout["main"]["left"]["search"].update(search_panel)
     layout["main"]["left"]["library"].update(lib_panel)
 
     # Footer con comandi
-    footer_text = Text("[W/S] Move | [Enter] Start | [/] Search | [TAB] Sort | [R] Reverse | [Q] Exit")
-    layout["footer"].update(Panel(footer_text))
+    footer_text = Text("[W/S] Move | [Enter] Start | [/] Search | [TAB] Sort | [R] Reverse | [T] Theme | [Q] Exit")
+    layout["footer"].update(Panel(footer_text, style=palette_selected['text']))
 
     current_game = filtered_games[selezionato]
-    info = f"[bold]{current_game['name']}[/bold]\n\n[dim]AppId:[/] {current_game['appid']}\n\n[dim]Path:[/] {current_game['exe']}\n\n[dim]Category:[/] {current_game['category']}\n\n[dim]Icon:[/] {current_game['icon']}"
+    info_title = Text(f"{current_game['name']} \n", style=palette_selected['game_title'])
+    info_details = Text(f"\n\nAppId: {current_game['appid']}\nPath: {current_game['exe']}\nCategory: {current_game['category']}\nIcon: {current_game['icon']}", style=palette_selected['info'])
+    
+    info_text = Text()
+    info_text.append(info_title)
+    info_text.append(info_details)
+    
     if(current_game['last_played'] != 0):
         last_played = datetime.fromtimestamp(current_game['last_played'])
-        last_played = last_played.strftime("%b %d %Y %H:%M")
-        info += f"\n\n[dim]Last Played:[/] {last_played}"
+        last_player = last_played.strftime("%b %d %Y %H:%M")
+        last_played_text = Text(f"\n\nLast Played: {last_player}", style=palette_selected['time'])
+        info_text.append(last_played_text)
+    
+    info_icon_layout["info"].update(Align.left(info_text))
 
     icon_padding = 2
     right_width =  max_width*((layout["main"]["right"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
-    right_width -= estimate_entry_height(info, int(right_width))
+    right_width -= estimate_entry_height(info_text.__str__(), int(right_width))
     icon_width = int(right_width + icon_padding)
     icon_height = int(max_height/2)
     
@@ -194,17 +212,10 @@ def render():
     except:
         ascii_icon = Text(f"[bold cyan]{current_game['name']}[/bold cyan]\n╭────╮\n│ :) │\n╰────╯")
 
-    info_icon_layout = Layout()
-    info_icon_layout.split_column(
-        Layout(name="info"),
-        Layout(name="icon")  # spazio fisso per icona ASCII
-    )
-
-    info_icon_layout["info"].update(Align.left(info))
     info_icon_layout["icon"].update(Align.right(ascii_icon))
 
     # Inserisci tutto nel pannello destro
-    layout["right"].update(Panel(info_icon_layout, title="Details", box=box.DOUBLE))
+    layout["right"].update(Panel(info_icon_layout, title="Details", box=box.DOUBLE, style=palette_selected['info']))
     
     return layout
 
@@ -230,6 +241,9 @@ with Live(render(), screen=True) as live:
             elif key == "\t":   # TAB: sort mode
                 sort_index = (sort_index + 1) % len(sort_modes)
                 selezionato = 0
+            elif key == "t":    # T: change theme
+                current_palette_index = (current_palette_index + 1) % len(palettes)
+                palette_selected = palettes[current_palette_index]
             elif key == "r":    # R: reverse order
                 sort_ascending = not sort_ascending
             elif key == "w":    # W: move down
