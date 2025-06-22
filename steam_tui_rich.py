@@ -2,12 +2,10 @@ import os
 import msvcrt
 import json
 import subprocess
-import threading
 import time
 from datetime import datetime
 from rich.console import Console
 from rich.text import Text
-from rich.padding import Padding
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.align import Align
@@ -17,6 +15,7 @@ from rich.table import Table
 from rich import box
 from steam_tui import get_games
 from imag_proc import image_to_ascii
+from load_themes import get_themes
 
 # Sort games based on sort mode and sord_ascending order
 def sort_games(games, sort_mode, sort_ascending):
@@ -65,7 +64,7 @@ with open("config.json", "r") as f:
     config = json.load(f)
 steam_id = config["steam_id"]
 steam_path = config["steam_path"]
-palettes = config["palettes"]
+palettes = get_themes()
 
 games = get_games(steam_id, steam_path)
 
@@ -140,6 +139,7 @@ def estimate_entry_height(entry, width=28):
 def render():
     layout = Layout()
     layout.split_column(
+        Layout(name="banner", size=1),
         Layout(name="main", ratio=8),
         Layout(name="footer", size=3)
     )
@@ -161,6 +161,14 @@ def render():
     max_height = os.get_terminal_size().lines - 6
     max_width = os.get_terminal_size().columns - 6
     
+    term_width = os.get_terminal_size().columns
+    theme_name = palette_selected.get("name", "Theme")
+    banner_text = f"= TUI Media Player - {theme_name} ="
+    banner_line = banner_text.center(term_width, "=")
+
+    banner = Text(banner_line, style=palette_selected["text"], justify="center")
+    layout["banner"].update(Align.center(banner))
+
     left_width =  max_width*((layout["main"]["left"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
     visible_games = compute_visible_games(filtered_games, selezionato, max_height, int(left_width))
 
