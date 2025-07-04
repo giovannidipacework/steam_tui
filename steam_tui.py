@@ -26,23 +26,23 @@ def get_games(steam_id, steam_path):
     for lib in libraries:
         steam_games = get_installed_games(lib)
 
-    for steam_game in steam_games:
-        try:
-            imgs = find_and_classify_steam_images(steam_path, steam_game["appid"])
-        except Exception as e:
-            print(f"icon not found for {steam_game['name']} - {steam_game['appid']}")
-            print(e)
-            continue
+        for steam_game in steam_games:
+            try:
+                imgs = find_and_classify_steam_images(steam_path, steam_game["appid"])
+            except Exception as e:
+                print(f"icon not found for {steam_game['name']} - {steam_game['appid']}")
+                print(e)
+                continue
 
-        game = {
-            "appid": steam_game["appid"],
-            "name": steam_game["name"],
-            "exe": f"start steam://run/{steam_game['appid']}",
-            "icon": imgs['icon'],
-            "category": "Steam",
-            "last_played": int((steam_game["LastPlayed"])),
-            "size_on_disk": steam_game["SizeOnDisk"]
-        }
-        games.append(game)
+            game = {
+                "appid": steam_game["appid"],
+                "name": steam_game["name"],
+                "exe": f"start steam://run/{steam_game['appid']}",
+                "icon": imgs['icon'],
+                "category": "Steam",
+                "last_played": int((steam_game["LastPlayed"])),
+                "size_on_disk": steam_game["SizeOnDisk"]
+            }
+            games.append(game)
 
     return games

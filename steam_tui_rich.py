@@ -184,7 +184,7 @@ def render():
 
 
     search_panel = Panel(Text(f"Search: {search_query}_"), title="Search", subtitle=f"[dim]Sort by: {sort_modes[sort_index]} {"↑" if sort_ascending else "↓"}[/]", style=f"{palette_selected['search']}")
-    lib_panel = Panel(tabella, title="Library", box=box.DOUBLE, style=palette_selected['time'])
+    lib_panel = Panel(tabella, title="Library", box=box.DOUBLE, style=palette_selected["text"])
 
     layout["main"]["left"]["search"].update(search_panel)
     layout["main"]["left"]["library"].update(lib_panel)
@@ -223,7 +223,7 @@ def render():
     info_icon_layout["icon"].update(Align.right(ascii_icon))
 
     # Inserisci tutto nel pannello destro
-    layout["right"].update(Panel(info_icon_layout, title="Details", box=box.DOUBLE, style=palette_selected['info']))
+    layout["right"].update(Panel(info_icon_layout, title="Details", box=box.DOUBLE, style=palette_selected["text"]))
     
     return layout
 
