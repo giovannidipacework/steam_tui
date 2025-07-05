@@ -39,6 +39,7 @@ def update_games(games, search_query, sort_mode, sort_ascending):
 # Save last sort order and quit
 def quit_steam():
     with open("config.json", "w") as f:
+        config["theme"] = current_palette_index
         config["sort_index"] = sort_index
         config["ascending"] = sort_ascending
         json.dump(config, f, indent=4)
@@ -70,7 +71,9 @@ games = get_games(steam_id, steam_path)
 
 # UI state
 selezionato = 0
-current_palette_index = 0
+current_palette_index = config['theme']
+if current_palette_index >= len(palettes) or current_palette_index < 0:
+    current_palette_index = 0
 palette_selected = palettes[current_palette_index]
 max_height = os.get_terminal_size().lines - 6
 max_width = os.get_terminal_size().columns - 6
