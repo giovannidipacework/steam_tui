@@ -4,6 +4,9 @@ import json
 def get_themes():
     """
     Returns a list of themes available in the 'themes' directory.
+
+    Returns:
+        list: List of theme dictionaries loaded from JSON files.
     """
     themes_dir = os.path.join(os.path.dirname(__file__), 'themes')
     themes = []

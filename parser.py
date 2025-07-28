@@ -10,7 +10,15 @@ TYPE_STRING = 0x01
 TYPE_INT32 = 0x02
 
 def read_cstring_bytes(f) -> bytes:
-    """Legge una stringa null-terminata come bytes."""
+    """
+    Read a null-terminated string as bytes from a file object.
+
+    Args:
+        f (file): File object opened in binary mode.
+
+    Returns:
+        bytes: The read bytes up to the null terminator.
+    """
     buf = bytearray()
     while True:
         b = f.read(1)
@@ -20,14 +28,30 @@ def read_cstring_bytes(f) -> bytes:
     return bytes(buf)
 
 def decode_safe(b: bytes) -> str:
-    """Decodifica sicura UTF-8, fallback Latin1."""
+    """
+    Safely decode bytes to string using UTF-8, fallback to Latin1.
+
+    Args:
+        b (bytes): Bytes to decode.
+
+    Returns:
+        str: Decoded string.
+    """
     try:
         return b.decode('utf-8')
     except UnicodeDecodeError:
         return b.decode('latin1', errors='replace')
 
 def get_shortcuts(path: str) -> List[Dict[str, Any]]:
-    """Parsa shortcuts.vdf binario in modo robusto."""
+    """
+    Parse the binary shortcuts.vdf file and return a list of shortcuts.
+
+    Args:
+        path (str): Path to the shortcuts.vdf file.
+
+    Returns:
+        List[Dict[str, Any]]: List of shortcut dictionaries.
+    """
     shortcuts = []
 
     known_keys = {
@@ -97,6 +121,13 @@ def get_shortcuts(path: str) -> List[Dict[str, Any]]:
     return shortcuts
 
 def get_shortcut_last_playtime(games, gameprocess_log_path):
+    """
+    Update the 'last_played' field for shortcuts using the gameprocess_log.txt.
+
+    Args:
+        games (list): List of game dictionaries.
+        gameprocess_log_path (str): Path to the Steam gameprocess_log.txt.
+    """
     pattern_add = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] AppID (\d+) adding PID (\d+) as a tracked process ""(.+?)""'
 
     for line in open(gameprocess_log_path, 'r', encoding='utf-8'):
@@ -109,6 +140,15 @@ def get_shortcut_last_playtime(games, gameprocess_log_path):
                     game["last_played"] = int(dt.timestamp())
 
 def get_steam_libraries(steam_path):
+    """
+    Retrieve all Steam library paths from libraryfolders.vdf.
+
+    Args:
+        steam_path (str): The root path of the Steam installation.
+
+    Returns:
+        list: List of library folder paths.
+    """
     lib_path = os.path.join(steam_path, "steamapps", "libraryfolders.vdf")
     with open(lib_path, encoding='utf-8') as f:
         data = vdf.load(f)
@@ -123,12 +163,21 @@ def get_steam_libraries(steam_path):
 
 def get_installed_games(library_path):
     """
-    Games structures:
-    appid, universe, LauncherPath, name, StateFlags, installdir, LastUpdated, LastPlayed,
-    SizeOnDisk, StagingSize, buildid, LastOwner, UpdateResult, BytesToDownload, BytesDownloaded,
-    BytesToStage, BytesStaged, TargetBuildID', AutoUpdateBehavior, AllowOtherDownloadsWhileRunning,
-    ScheduledAutoUpdate, InstalledDepots, InstallScripts, SharedDepots, UserConfig, MountedConfig
+    Retrieve all installed games from a Steam library folder.
+
+    Args:
+        library_path (str): Path to the Steam library.
+
+    Returns:
+        list: List of game info dictionaries.
     """
+
+    # Games structures:
+    # appid, universe, LauncherPath, name, StateFlags, installdir, LastUpdated, LastPlayed,
+    # SizeOnDisk, StagingSize, buildid, LastOwner, UpdateResult, BytesToDownload, BytesDownloaded,
+    # BytesToStage, BytesStaged, TargetBuildID', AutoUpdateBehavior, AllowOtherDownloadsWhileRunning,
+    # ScheduledAutoUpdate, InstalledDepots, InstallScripts, SharedDepots, UserConfig, MountedConfig
+
     steamapps = os.path.join(library_path, "steamapps")
     games = []
     for fname in os.listdir(steamapps):

@@ -1,8 +1,8 @@
 import os
-import msvcrt
 import json
 import subprocess
 import time
+import readchar
 from datetime import datetime
 from rich.console import Console
 from rich.text import Text
@@ -17,28 +17,64 @@ from steam_tui import get_games
 from imag_proc import image_to_ascii
 from load_themes import get_themes
 
-# Sort games based on sort mode and sord_ascending order
+# TODO:
+# localconfig.vdf for every game playtime and last played
+# localconfig.vdf for collection (to check)
+
 def sort_games(games, sort_mode, sort_ascending):
+    """
+    Sort games based on the given sort mode and order.
+
+    Args:
+        games (list): List of game dictionaries.
+        sort_mode (str): The field to sort by ("name", "category", "last_played").
+        sort_ascending (bool): Sort order, True for descending.
+
+    Returns:
+        list: Sorted list of games.
+    """
     sorted_list = sorted(games, key=lambda g: g[sort_mode], reverse=sort_ascending)
     return sorted_list
 
-# Filter games based on query
 def filter_games(games, query):
+    """
+    Filter games by a search query on the game name.
+
+    Args:
+        games (list): List of game dictionaries.
+        query (str): Search string.
+
+    Returns:
+        list: Filtered list of games.
+    """
     if query != "":
         filter =  [g for g in games if query.lower() in g["name"].lower()]
     else:
         filter = games
     return filter
 
-# Update the games based on query and sort mode
 def update_games(games, search_query, sort_mode, sort_ascending):
+    """
+    Update the games list by sorting and filtering.
+
+    Args:
+        games (list): List of game dictionaries.
+        search_query (str): Search string.
+        sort_mode (str): Field to sort by.
+        sort_ascending (bool): Sort order.
+
+    Returns:
+        list: Filtered and sorted list of games.
+    """
     sorted_games = sort_games(games, sort_mode, sort_ascending)
     filtered_games = filter_games(sorted_games, search_query)
     return filtered_games
 
-# Save last sort order and quit
 def quit_steam():
-    with open("config.json", "w") as f:
+    """
+    Save the current configuration and quit the application.
+    """
+    with open("config.json", "w", encoding="utf-8") as f:
         config["theme"] = current_palette_index
         config["sort_index"] = sort_index
         config["ascending"] = sort_ascending
@@ -46,22 +82,36 @@ def quit_steam():
     quit()
 
 def get_key():
-    if not msvcrt.kbhit():
-        return ""  # Nessun tasto premuto, ritorna stringa vuota subito
-    key = msvcrt.getch()
-    if key == b'\xe0':  # tasto speciale (frecce)
-        key2 = msvcrt.getch()
-        if key2 == b'H': return "w"  # freccia su
-        if key2 == b'P': return "s"  # freccia giù
-    try:
-        return key.decode("utf-8").lower()
-    except:
-        return ""
+    """
+    Read a key from the user and map special keys to actions.
+
+    Returns:
+        str: The mapped key or character.
+    """
+    key = readchar.readkey()
+    # Map arrow keys to 'w' (up) and 's' (down)
+    if key == readchar.key.UP:
+        return "w"
+    if key == readchar.key.DOWN:
+        return "s"
+    # Enter key
+    if key == readchar.key.ENTER:
+        return "\r"
+    # Tab key
+    if key == readchar.key.TAB:
+        return "\t"
+    # Backspace
+    if key == readchar.key.BACKSPACE:
+        return "\x08"
+    # All other keys (printable)
+    if len(key) == 1 and key.isprintable():
+        return key.lower()
+    return ""
 
 console = Console(record=True)
 
 # Read config from config.json
-with open("config.json", "r") as f:
+with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 steam_id = config["steam_id"]
 steam_path = config["steam_path"]
@@ -103,6 +153,18 @@ filtered_games = update_games(games, search_query, sort_modes[sort_index], sort_
 
 # FIXME move selection
 def compute_visible_games(games_list, selezionato, max_height, width):
+    """
+    Compute the list of visible games in the UI, scrolling if needed.
+
+    Args:
+        games_list (list): List of games to display.
+        selezionato (int): Index of the selected game.
+        max_height (int): Maximum number of lines available.
+        width (int): Width for text wrapping.
+
+    Returns:
+        list: List of tuples (index, game) for visible games.
+    """
     n = len(games_list)
     # Punto di partenza: cerca di mettere selezionato in cima
     start_index = selezionato
@@ -135,11 +197,27 @@ def compute_visible_games(games_list, selezionato, max_height, width):
     return visible
 
 def estimate_entry_height(entry, width=28):
+    """
+    Estimate the number of lines needed to display a game entry.
+
+    Args:
+        entry (str): The game name.
+        width (int): The width for wrapping.
+
+    Returns:
+        int: Number of lines required.
+    """
     text = Text("➤ " + entry)
     lines = text.wrap(console, width, tab_size=4)
     return len(lines)
 
 def render():
+    """
+    Render the entire TUI layout using Rich.
+
+    Returns:
+        Layout: The Rich Layout object representing the UI.
+    """
     layout = Layout()
     layout.split_column(
         Layout(name="banner", size=1),
@@ -232,6 +310,9 @@ def render():
 
 # Live rendering e input
 with Live(render(), screen=True) as live:
+    """
+    Main event loop for the TUI. Handles user input and updates the UI.
+    """
     while True:
         key = get_key()
         

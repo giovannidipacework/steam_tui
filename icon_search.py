@@ -3,9 +3,13 @@ from PIL import Image
 
 def classify_images_by_size(images: list[str]) -> dict:
     """
-    Classifica una lista di percorsi immagine in base
-    alle dimensioni e rapporto d'aspetto.
-    Ritorna dict con chiavi: icon, logo, header, poster, hero, others.
+    Classify a list of image paths by size and aspect ratio.
+
+    Args:
+        images (list[str]): List of image file paths.
+
+    Returns:
+        dict: Dictionary with keys: icon, logo, header, poster, hero, others.
     """
     classified = {
         "icon": None,
@@ -45,7 +49,7 @@ def classify_images_by_size(images: list[str]) -> dict:
             classified["poster"] = path
 
         # Hero: orizzontale, dimensioni medio-grandi
-        elif ratio >= HERO_MIN_RATIO and w >= 00:
+        elif ratio >= HERO_MIN_RATIO:
             if classified["hero"] is not None:
                 classified["hero"] = path
 
@@ -60,8 +64,14 @@ def classify_images_by_size(images: list[str]) -> dict:
 
 def find_and_classify_steam_images(steam_path: str, appid: int) -> dict:
     """
-    Cerca in appcache/librarycache tutte le immagini contenenti l'appid 
-    e le classifica automaticamente.
+    Search for all images containing the appid in appcache/librarycache and classify them.
+
+    Args:
+        steam_path (str): The root path of the Steam installation.
+        appid (int): The Steam appid.
+
+    Returns:
+        dict: Dictionary of classified images.
     """
     base = os.path.join(steam_path, "appcache", "librarycache", str(appid))
     if not os.path.isdir(base):

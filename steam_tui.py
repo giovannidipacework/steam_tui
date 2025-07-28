@@ -1,8 +1,25 @@
+"""
+steam_tui.py
+
+Provides functions to retrieve and aggregate games from Steam libraries and user shortcuts.
+"""
+
 from parser import get_shortcuts, get_steam_libraries, get_installed_games, get_shortcut_last_playtime
 from icon_search import find_and_classify_steam_images
 import os
 
 def get_games(steam_id, steam_path):
+    """
+    Retrieve all games from Steam libraries and user shortcuts.
+
+    Args:
+        steam_id (str): The user's Steam ID.
+        steam_path (str): The root path of the Steam installation.
+
+    Returns:
+        list[dict]: A list of dictionaries, each representing a game with keys such as
+            'appid', 'name', 'exe', 'icon', 'category', 'last_played', and optionally 'size_on_disk' and 'path'.
+    """
     games = []
 
     shortcut_path = os.path.join(steam_path, "userdata", steam_id, "config", "shortcuts.vdf")
@@ -10,7 +27,7 @@ def get_games(steam_id, steam_path):
     for shortcut in shortcuts:
         id = (shortcut["appid"] << 32) | 0x02000000
         game = {
-            "appid":shortcut["appid"],
+            "appid": shortcut["appid"],
             "name": shortcut["appname"],
             "exe": f"start steam://rungameid/{id}",
             "icon": shortcut["icon"],
@@ -31,7 +48,7 @@ def get_games(steam_id, steam_path):
                 imgs = find_and_classify_steam_images(steam_path, steam_game["appid"])
             except Exception as e:
                 print(f"icon not found for {steam_game['name']} - {steam_game['appid']}")
-                print(e)
+                # print(e)
                 continue
 
             game = {

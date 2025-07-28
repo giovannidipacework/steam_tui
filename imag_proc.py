@@ -7,13 +7,12 @@ from rich.text import Text
 def difference_of_gaussian(image, sigma1=1, sigma2=2):
     """
     Apply Difference of Gaussian (DoG) to an image.
-    This function applies two Gaussian blurs with different standard deviations
-    and subtracts the second from the first to enhance edges.
-    The result is clipped to ensure pixel values remain in the valid range [0, 255].
+
     Args:
         image (PIL.Image): Input image.
         sigma1 (float): Standard deviation for the first Gaussian.
         sigma2 (float): Standard deviation for the second Gaussian.
+
     Returns:
         PIL.Image: Image after applying DoG.
     """
@@ -27,6 +26,13 @@ def difference_of_gaussian(image, sigma1=1, sigma2=2):
 def sobel_edge(image, edge_threshold=0.3):
     """
     Apply Sobel edge detection to an image.
+
+    Args:
+        image (np.ndarray or PIL.Image): Grayscale image.
+        edge_threshold (float): Threshold for edge detection.
+
+    Returns:
+        np.ndarray: Array of edge angles, masked by threshold.
     """
     Gx = np.array([[1.0, 0.0, -1.0], [2.0, 0.0, -2.0], [1.0, 0.0, -1.0]])
     Gy = np.array([[1.0, 2.0, 1.0], [0.0, 0.0, 0.0], [-1.0, -2.0, -1.0]])
@@ -88,8 +94,17 @@ def sobel_edge(image, edge_threshold=0.3):
     return angles_masked
 
 def image_to_ascii(image_path, in_width = 40, in_height = 40):
-    # ... codice simile a image_to_ascii_pillow ...
+    """
+    Convert an image to colored ASCII art using edge detection and color mapping.
 
+    Args:
+        image_path (str): Path to the image file.
+        in_width (int): Target width for ASCII art.
+        in_height (int): Target height for ASCII art.
+
+    Returns:
+        rich.text.Text: Rich Text object with colored ASCII art.
+    """
     ASCII_CHARS = " .:-=+*#%@░▒▓█"
     EDGE_THRESHOLD = 0.5
 
@@ -171,11 +186,3 @@ def image_to_ascii(image_path, in_width = 40, in_height = 40):
             ascii_text.append("\n")
 
     return ascii_text
-
-# def main():
-#     path = "C:/Program Files (x86)/Steam/userdata/66186145/config/grid/2447872262_icon.png"
-#     img = image_to_ascii_colored(path, 80)
-#     print(f"{img}")
-
-# if __name__ == "__main__":
-#     main()
