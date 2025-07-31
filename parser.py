@@ -187,3 +187,32 @@ def get_installed_games(library_path):
                 info = appdata['AppState']
                 games.append(info)
     return games
+
+def get_localconfig_last_playtime(games, localconfig_path):
+    """
+    Retrieve the last played time for a game from localconfig.vdf.
+
+    Args:
+        steam_path (str): The root path of the Steam installation.
+        appid (int): The application ID of the game.
+
+    Returns:
+        int: Last played timestamp in seconds since epoch.
+    """
+    with open(localconfig_path, encoding='utf-8') as f:
+        data = vdf.load(f)
+
+    data.get('UserLocalConfigStore', {}).get('Software', {}).get('Valve', {}).get('Steam', {}).get('apps', {})
+    for appid, appdata in data['UserLocalConfigStore']['Software']['Valve']['Steam']['apps'].items():
+        for game in games:
+            if str(game['appid']) == appid:
+
+                last_played = appdata.get('LastPlayed', 0)
+                if isinstance(last_played, str):
+                    game["last_played"] = int(last_played)
+                else:
+                    game["last_played"] = last_played
+
+                play_time = appdata.get('Playtime', 0)
+                if isinstance(play_time, str):
+                    game["play_time"] = int(play_time)

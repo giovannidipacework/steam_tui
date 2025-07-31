@@ -17,17 +17,13 @@ from steam_tui import get_games
 from imag_proc import image_to_ascii
 from load_themes import get_themes
 
-# TODO:
-# localconfig.vdf for every game playtime and last played
-# localconfig.vdf for collection (to check)
-
 def sort_games(games, sort_mode, sort_ascending):
     """
     Sort games based on the given sort mode and order.
 
     Args:
         games (list): List of game dictionaries.
-        sort_mode (str): The field to sort by ("name", "category", "last_played").
+        sort_mode (str): The field to sort by.
         sort_ascending (bool): Sort order, True for descending.
 
     Returns:
@@ -134,7 +130,7 @@ max_width = os.get_terminal_size().columns - 6
 # Sort options
 sort_index = config['sort_index']
 sort_ascending = config['ascending']
-sort_modes = ["name", "category", "last_played"]
+sort_modes = ["name", "category", "last_played", "play_time"]
 
 # Search
 search_query = ""
@@ -313,6 +309,13 @@ def render():
         last_player = last_played.strftime("%b %d %Y %H:%M")
         last_played_text = Text(f"\n\nLast Played: {last_player}", style=palette_selected['time'])
         info_text.append(last_played_text)
+
+    if(current_game['play_time'] != 0):
+        play_time = current_game['play_time']
+        play_time_hours = play_time / 60
+        play_time_minutes = play_time % 60
+        play_time_text = Text(f"\n\nPlay Time: {play_time_hours:.0f} hours {play_time_minutes} minutes", style=palette_selected['time'])
+        info_text.append(play_time_text)
 
     info_icon_layout["info"].update(Align.left(info_text))
 
