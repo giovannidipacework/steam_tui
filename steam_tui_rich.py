@@ -121,10 +121,13 @@ games = get_games(steam_id, steam_path)
 
 # UI state
 selected = 0
+first_visible_game_index = 0
+# Load the current theme
 current_palette_index = config['theme']
 if current_palette_index >= len(palettes) or current_palette_index < 0:
     current_palette_index = 0
 palette_selected = palettes[current_palette_index]
+# Set terminal size limits
 max_height = os.get_terminal_size().lines - 6
 max_width = os.get_terminal_size().columns - 6
 
@@ -151,8 +154,8 @@ no_result = [
 
 filtered_games = update_games(games, search_query, sort_modes[sort_index], sort_ascending)
 
-# FIXME move selection
-def compute_visible_games(games_list, selected, max_height, width):
+
+def compute_visible_games(games_list, selected_game, first_visible_game_index, height, width):
     """
     Compute the list of visible games in the UI, scrolling if needed.
 
@@ -166,32 +169,44 @@ def compute_visible_games(games_list, selected, max_height, width):
         list: List of tuples (index, game) for visible games.
     """
     n = len(games_list)
+    total_height = 0
     # Start point: try to put selected at the top
-    start_index = selected
+    start_index = first_visible_game_index
+
+    # Cache for entry heights: {(name, width): height}
+    height_cache = {}
 
     while True:
         total_height = 0
         visible = []
-        for i in range(start_index, n):
-            h = estimate_entry_height(games_list[i]['name'], width)
-            if total_height + h > max_height:
-                break
-            visible.append((i, games_list[i]))
-            total_height += h
 
-        # If the selected game is above the window
-        if selected < start_index:
-            start_index = selected
-            continue
+        while total_height < height:
+            for i in range(start_index, n):
+                cache_key = (games_list[i]['name'], width)
+                if cache_key in height_cache:
+                    h = height_cache[cache_key]
+                else:
+                    h = estimate_entry_height(games_list[i]['name'], width)
+                    height_cache[cache_key] = h
+                if total_height + h > height:
+                    # If adding this game exceeds the height, stop
+                    break
+                visible.append((i, games_list[i]))
+                total_height += h + 1  # +1 for padding between entries
 
-        # If the selected game is below the window
-        if selected >= start_index + len(visible):
-            start_index += 1
-            if start_index > selected:
-                start_index = selected
-            continue
-
-        break  # selected is inside the window
+        visible_games_names = [g[1]['name'] for g in visible]
+        if selected_game['name'] not in visible_games_names:
+            # If selected game is not visible, adjust the start index
+            if selected > start_index:
+                # If selected game is below the current start index, scroll down
+               start_index += 1
+            else:
+                # If selected game is above the current start index, scroll up
+                start_index -= 1
+            
+        else:
+            # If selected game is visible, return the visible games
+            break
 
     return visible
 
@@ -227,8 +242,9 @@ def render():
         Layout(name="left", ratio=1),
         Layout(name="right", ratio=3)
     )
+    search_size = 3
     layout["main"]["left"].split_column(
-        Layout(name="search",size=3),
+        Layout(name="search",size=search_size),
         Layout(name="library")
     )
 
@@ -237,6 +253,8 @@ def render():
         Layout(name="info"),
         Layout(name="icon")  # fixed space for ASCII icon
     )
+
+    current_game = filtered_games[selected]
 
     max_height = os.get_terminal_size().lines - 6
     max_width = os.get_terminal_size().columns - 6
@@ -250,7 +268,18 @@ def render():
     layout["banner"].update(Align.center(banner))
 
     left_width =  max_width*((layout["main"]["left"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
-    visible_games = compute_visible_games(filtered_games, selected, max_height, int(left_width))
+    left_height = max_height - search_size
+    global first_visible_game_index
+    visible_games = compute_visible_games(filtered_games, current_game, first_visible_game_index, left_height, int(left_width))
+    
+    if visible_games:
+        first_game_name = visible_games[0][1]['name']
+        for idx, game in enumerate(filtered_games):
+            if game['name'] == first_game_name:
+                first_visible_game_index = idx
+                break
+    else:
+        first_visible_game_index = 0
 
     table = Table.grid(padding=1)
     table.box = box.SIMPLE
@@ -272,7 +301,6 @@ def render():
     footer_text = Text("[W/S] Move | [Enter] Start | [/] Search | [TAB] Sort | [R] Reverse | [T] Theme | [Q] Exit")
     layout["footer"].update(Panel(footer_text, style=palette_selected['text']))
 
-    current_game = filtered_games[selected]
     info_title = Text(f"{current_game['name']} \n", style=palette_selected['game_title'])
     info_details = Text(f"\n\nAppId: {current_game['appid']}\nPath: {current_game['exe']}\nCategory: {current_game['category']}\nIcon: {current_game['icon']}", style=palette_selected['info'])
 
