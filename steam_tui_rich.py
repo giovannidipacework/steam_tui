@@ -144,6 +144,7 @@ no_result = [
         "icon": "",
         "category": "No Result",
         "last_played": 0,
+        "play_time": 0,
         "path": "No Result"
     }
 ]
@@ -176,19 +177,18 @@ def compute_visible_games(games_list, selected_game, first_visible_game_index, h
         total_height = 0
         visible = []
 
-        while total_height < height:
-            for i in range(start_index, n):
-                cache_key = (games_list[i]['name'], width)
-                if cache_key in height_cache:
-                    h = height_cache[cache_key]
-                else:
-                    h = estimate_entry_height(games_list[i]['name'], width)
-                    height_cache[cache_key] = h
-                if total_height + h > height:
-                    # If adding this game exceeds the height, stop
-                    break
-                visible.append((i, games_list[i]))
-                total_height += h + 1  # +1 for padding between entries
+        for i in range(start_index, n):
+            cache_key = (games_list[i]['name'], width)
+            if cache_key in height_cache:
+                h = height_cache[cache_key]
+            else:
+                h = estimate_entry_height(games_list[i]['name'], width)
+                height_cache[cache_key] = h
+            if total_height + h > height:
+                # If adding this game exceeds the height, stop
+                break
+            visible.append((i, games_list[i]))
+            total_height += h + 1  # +1 for padding between entries
 
         visible_games_names = [g[1]['name'] for g in visible]
         if selected_game['name'] not in visible_games_names:
@@ -247,7 +247,7 @@ def render():
     info_icon_layout = Layout()
     info_icon_layout.split_column(
         Layout(name="info"),
-        Layout(name="icon")  # fixed space for ASCII icon
+        Layout(name="icon")
     )
 
     current_game = filtered_games[selected]
@@ -265,6 +265,8 @@ def render():
 
     left_width =  max_width*((layout["main"]["left"].ratio)/(layout["main"]["left"].ratio+layout["main"]["right"].ratio))
     left_height = max_height - search_size
+
+    # Compute visible games
     global first_visible_game_index
     visible_games = compute_visible_games(filtered_games, current_game, first_visible_game_index, left_height, int(left_width))
     
@@ -277,9 +279,11 @@ def render():
     else:
         first_visible_game_index = 0
 
+    # Create the left panel with visible games
     table = Table.grid(padding=1)
     table.box = box.SIMPLE
 
+    # Add columns to the table
     for i, game in visible_games:
         prefix = "➤ " if i == selected else ""
         row = Text(prefix + str(game["name"]))
@@ -338,7 +342,7 @@ def render():
     return layout
 
 # Live rendering and input
-with Live(render(), screen=True) as live:
+with Live(render(), screen=True, refresh_per_second=10) as live:
     """
     Main event loop for the TUI. Handles user input and updates the UI.
     """
@@ -358,7 +362,7 @@ with Live(render(), screen=True) as live:
             if key == "q":  # Q: save config and quit
                 quit_steam()
             elif key == "/":    # /: search mode
-                search_mode = True
+                search_mode = not search_mode
             elif key == "\t":   # TAB: sort mode
                 sort_index = (sort_index + 1) % len(sort_modes)
                 selected = 0
