@@ -36,7 +36,7 @@ python steam_tui_rich.py
 
 - Navigate your Steam library using the keyboard (W/S to move, Enter to launch a game)
 - Instant search for games
-- Sort by name, category, or last played
+- Sort by various option
 - Customizable themes (`themes/` folder)
 - Detailed view and ASCII art icons for games
 
