@@ -135,7 +135,8 @@ def get_shortcut_last_playtime(games, gameprocess_log_path):
         if m:
             timestamp, appid, pid, exe_path = m.groups()
             for game in games:
-                if(exe_path in game['path']):
+                id = game.get('id', None)
+                if(exe_path in game['exe']) or (str(id) == appid):
                     dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
                     game["last_played"] = int(dt.timestamp())
 

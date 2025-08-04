@@ -302,7 +302,7 @@ def render():
     layout["footer"].update(Panel(footer_text, style=palette_selected['text']))
 
     info_title = Text(f"{current_game['name']} \n", style=palette_selected['game_title'])
-    info_details = Text(f"\n\nAppId: {current_game['appid']}\nPath: {current_game['exe']}\nCategory: {current_game['category']}\nIcon: {current_game['icon']}", style=palette_selected['info'])
+    info_details = Text(f"\n\nAppId: {current_game['appid']}\nExe: {current_game['exe']}\nCategory: {current_game['category']}\nIcon: {current_game['icon']}", style=palette_selected['info'])
 
     info_text = Text()
     info_text.append(info_title)

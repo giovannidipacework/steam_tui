@@ -35,7 +35,7 @@ def get_games(steam_id, steam_path):
             "category": shortcut["0"],
             "last_played": 0,
             "play_time": 0,
-            "path": shortcut['exe']
+            "id": id,
         }
         games.append(game)
     
@@ -54,7 +54,7 @@ def get_games(steam_id, steam_path):
                 print(f"icon not found for {steam_game['name']} - {steam_game['appid']}")
                 # print(e)
                 continue
-
+            # Get steam game
             game = {
                 "appid": steam_game["appid"],
                 "name": steam_game["name"],

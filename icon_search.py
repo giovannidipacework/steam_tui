@@ -73,6 +73,7 @@ def find_and_classify_steam_images(steam_path: str, appid: int) -> dict:
     Returns:
         dict: Dictionary of classified images.
     """
+    steam_path = os.path.normpath(steam_path)
     base = os.path.join(steam_path, "appcache", "librarycache", str(appid))
     if not os.path.isdir(base):
         raise FileNotFoundError(f"Directory non trovata: {base}")
